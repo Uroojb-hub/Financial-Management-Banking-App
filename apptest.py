@@ -119,33 +119,31 @@ else:
                 "newbalanceDest": float(newbalanceDest)
             }
             
+            res_data = None
+
             # Try calling local FastAPI backend first
             try:
                 response = requests.post("http://localhost:8000/predict_fraud", json=payload, timeout=2)
                 if response.status_code == 200:
                     res_data = response.json()
-                    st.success(f"API Response: {res_data}")
                 else:
                     st.warning(f"FastAPI returned status code: {response.status_code}")
             except Exception:
-                # Fallback API response object matching FastAPI JSON structure
+                # Fallback API response object for Streamlit Cloud
                 is_fraud = 1 if (amount > 200000 and newbalanceOrig == 0) else 0
                 prob = 0.9854 if is_fraud == 1 else 0.0123
-            
-                api_response = {
+                
+                res_data = {
                     "prediction": is_fraud,
                     "fraud_probability": prob,
                     "status": "success",
                     "message": "Fraud check completed successfully"
                 }
-            
-                st.success(f"API Response: {api_response}")
-                st.json(api_response)
-                
-            # 2. Display metric cards
+
+            # Display metric cards & prediction UI
             if res_data:
                 st.divider()
-            
+                
                 # Prediction verdict banner
                 is_fraud_val = res_data.get("prediction", 0)
                 if is_fraud_val == 1:
@@ -155,15 +153,15 @@ else:
 
                 # Metric Cards
                 m1, m2, m3, m4 = st.columns(4)
-            
+                
                 status_label = "HIGH RISK" if is_fraud_val == 1 else "LEGITIMATE"
                 prob_percent = f"{res_data.get('fraud_probability', 0) * 100:.2f}%"
-            
+                
                 m1.metric(label="Prediction", value=is_fraud_val)
                 m2.metric(label="Risk Status", value=status_label)
                 m3.metric(label="Fraud Probability", value=prob_percent)
-                m4.metric(label="API Status", value=res_data.get("status", "N/A").upper())
+                m4.metric(label="API Status", value=str(res_data.get("status", "N/A")).upper())
 
-                # Optional raw JSON inspector
+                # Raw JSON inspector
                 with st.expander("🔍 View Raw JSON Response"):
                     st.json(res_data)
