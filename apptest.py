@@ -71,7 +71,7 @@ else:
     engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
 
    @st.cache_data
-   def load_transaction_data():
+    def load_transaction_data():
     # 1. Try loading from local MySQL if available
         try:
             engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim", connect_args={"connect_timeout": 2})
