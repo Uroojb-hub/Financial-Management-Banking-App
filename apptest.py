@@ -119,39 +119,22 @@ with predict_tab:
             "oldbalanceDest": float(oldbalanceDest),
             "newbalanceDest": float(newbalanceDest)
         }
+        
+        # Try calling local FastAPI backend first
+        try:
+            response = requests.post("http://localhost:8000/predict_fraud", json=payload, timeout=2)
+            if response.status_code == 200:
+                res_data = response.json()
+                st.success(f"API Response: {res_data}")
+            else:
+                st.warning(f"FastAPI returned status code: {response.status_code}")
+        except Exception:
+            # Fallback when running on Streamlit Cloud (Local API unreachable)
+            # Simple heuristic / dummy score for demonstration
+            is_fraud_prediction = 1 if (amount > 200000 and newbalanceOrig == 0) else 0
             
-api_url = "http://localhost:8000/predict_fraud"
-            
-try:
-    response = requests.post(api_url, json=payload)
-    if response.status_code == 200:
-        result = response.json()
-        is_fraud = result["is_fraud"]
-        prob = result["fraud_probability"] * 100
-        risk = result["risk_level"]
-
-        # NEW USER-FRIENDLY UI
-        st.divider()
-        st.subheader("📋 Transaction Risk Analysis Summary")
-
-        m1, m2, m3 = st.columns(3)
-
-        with m1:
-            st.metric(label="Decision", value="🚨 FLAG FRAUD" if is_fraud else "✅ APPROVED")
-
-        with m2:
-            st.metric(label="Risk Rating", value=f"{risk}")
-
-        with m3:
-            st.metric(label="Calculated Risk Probability", value=f"{prob:.1f}%")
-
-        # Visual Risk Progress Bar
-        st.write("**Risk Probability Meter:**")
-        st.progress(float(result["fraud_probability"]))
-
-        if is_fraud:
-            st.error("⚠️ **Action Required:** This transaction exhibits abnormal balance movement patterns and has been held for manual compliance review.")
-        else:
-            st.success("🎉 **Transaction Clear:** No suspicious patterns detected. Funds can be processed safely.")
-except Exception as api_err:
-    st.error(f"Could not connect to FastAPI server at `{api_url}`: {api_err}")
+            st.info("⚡ Note: Local FastAPI service unreachable on Cloud. Displaying cloud fallback prediction:")
+            if is_fraud_prediction == 1:
+                st.error("🚨 Warning: Transaction flagged as HIGH RISK / FRAUDULENT!")
+            else:
+                st.success("✅ Transaction verified: LOW RISK / LEGITIMATE")
