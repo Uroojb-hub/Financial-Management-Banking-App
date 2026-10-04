@@ -128,16 +128,16 @@ else:
                 else:
                     st.warning(f"FastAPI returned status code: {response.status_code}")
             except Exception:
-            # Fallback API response object matching FastAPI JSON structure
-            is_fraud = 1 if (amount > 200000 and newbalanceOrig == 0) else 0
-            prob = 0.9854 if is_fraud == 1 else 0.0123
+                # Fallback API response object matching FastAPI JSON structure
+                is_fraud = 1 if (amount > 200000 and newbalanceOrig == 0) else 0
+                prob = 0.9854 if is_fraud == 1 else 0.0123
             
-            api_response = {
-                "prediction": is_fraud,
-                "fraud_probability": prob,
-                "status": "success",
-                "message": "Fraud check completed successfully"
-            }
+                api_response = {
+                    "prediction": is_fraud,
+                    "fraud_probability": prob,
+                    "status": "success",
+                    "message": "Fraud check completed successfully"
+                }
             
-            st.success(f"API Response: {api_response}")
-            st.json(api_response)
+                st.success(f"API Response: {api_response}")
+                st.json(api_response)
