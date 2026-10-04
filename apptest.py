@@ -141,3 +141,29 @@ else:
             
                 st.success(f"API Response: {api_response}")
                 st.json(api_response)
+                
+            # 2. Display metric cards
+            if res_data:
+                st.divider()
+            
+                # Prediction verdict banner
+                is_fraud_val = res_data.get("prediction", 0)
+                if is_fraud_val == 1:
+                    st.error("🚨 **High Risk / Fraudulent Transaction Detected!**")
+                else:
+                    st.success("✅ **Low Risk / Legitimate Transaction Verified.**")
+
+                # Metric Cards
+                m1, m2, m3, m4 = st.columns(4)
+            
+                status_label = "HIGH RISK" if is_fraud_val == 1 else "LEGITIMATE"
+                prob_percent = f"{res_data.get('fraud_probability', 0) * 100:.2f}%"
+            
+                m1.metric(label="Prediction", value=is_fraud_val)
+                m2.metric(label="Risk Status", value=status_label)
+                m3.metric(label="Fraud Probability", value=prob_percent)
+                m4.metric(label="API Status", value=res_data.get("status", "N/A").upper())
+
+                # Optional raw JSON inspector
+                with st.expander("🔍 View Raw JSON Response"):
+                    st.json(res_data)
