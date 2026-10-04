@@ -70,16 +70,15 @@ else:
 
     engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
 
-   @st.cache_data
-    def load_transaction_data():
-    # 1. Try loading from local MySQL if available
-        try:
-            engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim", connect_args={"connect_timeout": 2})
-            df = pd.read_sql("SELECT * FROM transactions LIMIT 5000", engine)
-            return df
-        except Exception:
-            # 2. Fallback to sample CSV for Streamlit Cloud deployment
-            return pd.read_csv("paysim_sample.csv")
+# NO SPACES IN FRONT OF @st.cache_data
+@st.cache_data
+def load_transaction_data():
+    try:
+        engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim", connect_args={"connect_timeout": 2})
+        df = pd.read_sql("SELECT * FROM transactions LIMIT 5000", engine)
+        return df
+    except Exception:
+        return pd.read_csv("paysim_sample.csv")
         
     with dash_tab:
         if not df.empty:
