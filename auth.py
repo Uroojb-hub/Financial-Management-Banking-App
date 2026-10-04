@@ -1,32 +1,50 @@
+import os
 import bcrypt
 from sqlalchemy import create_engine, text
 
-# Database connection setup
-engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
+# 1. Dynamic Database Selection
+# Uses SQLite on Streamlit Cloud, fallback to local MySQL on your machine
+IS_CLOUD = os.getenv("STREAMLIT_SERVER_PORT") is not None or "STREAMLIT_SHARING" in os.environ
 
-# Auto-create the users table in your local MySQL database if it doesn't exist
+if IS_CLOUD:
+    engine = create_engine("sqlite:///users.db")
+else:
+    engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
+
+# 2. Auto-Create Table Setup
+# Generates the users table automatically depending on the active database engine
 with engine.connect() as conn:
-    conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(100) UNIQUE NOT NULL,
-            email VARCHAR(100) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL
-        );
-    """))
+    if "sqlite" in str(engine.url):
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL
+            );
+        """))
+    else:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL
+            );
+        """))
     conn.commit()
 
-# Password Hashing Function
+# 3. Password Hashing
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed.decode('utf-8')
 
-# Password Verification Function
+# 4. Password Verification
 def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-# Register User
+# 5. User Registration
 def register_user(username, email, password):
     hashed_pw = hash_password(password)
     query = text("INSERT INTO users (username, email, password_hash) VALUES (:username, :email, :password_hash)")
@@ -39,10 +57,9 @@ def register_user(username, email, password):
     except Exception as e:
         return False, f"Error: {e}"
 
-# Login User
+# 6. User Login
 def login_user(identifier, password):
     clean_id = identifier.strip()
-    # Checks if input matches either username OR email
     query = text("""
         SELECT password_hash, username 
         FROM users 
