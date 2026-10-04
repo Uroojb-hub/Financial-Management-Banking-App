@@ -122,36 +122,36 @@ with predict_tab:
             
 api_url = "http://localhost:8000/predict_fraud"
             
-            try:
-                response = requests.post(api_url, json=payload)
-                if response.status_code == 200:
-                    result = response.json()
-                    is_fraud = result["is_fraud"]
-                    prob = result["fraud_probability"] * 100
-                    risk = result["risk_level"]
+try:
+    response = requests.post(api_url, json=payload)
+    if response.status_code == 200:
+        result = response.json()
+        is_fraud = result["is_fraud"]
+        prob = result["fraud_probability"] * 100
+        risk = result["risk_level"]
 
-                   # NEW USER-FRIENDLY UI
-                    st.divider()
-                    st.subheader("📋 Transaction Risk Analysis Summary")
+        # NEW USER-FRIENDLY UI
+        st.divider()
+        st.subheader("📋 Transaction Risk Analysis Summary")
 
-                    m1, m2, m3 = st.columns(3)
+        m1, m2, m3 = st.columns(3)
 
-                    with m1:
-                        st.metric(label="Decision", value="🚨 FLAG FRAUD" if is_fraud else "✅ APPROVED")
+        with m1:
+            st.metric(label="Decision", value="🚨 FLAG FRAUD" if is_fraud else "✅ APPROVED")
 
-                    with m2:
-                        st.metric(label="Risk Rating", value=f"{risk}")
+        with m2:
+            st.metric(label="Risk Rating", value=f"{risk}")
 
-                    with m3:
-                        st.metric(label="Calculated Risk Probability", value=f"{prob:.1f}%")
+        with m3:
+            st.metric(label="Calculated Risk Probability", value=f"{prob:.1f}%")
 
-                    # Visual Risk Progress Bar
-                    st.write("**Risk Probability Meter:**")
-                    st.progress(float(result["fraud_probability"]))
+        # Visual Risk Progress Bar
+        st.write("**Risk Probability Meter:**")
+        st.progress(float(result["fraud_probability"]))
 
-                    if is_fraud:
-                        st.error("⚠️ **Action Required:** This transaction exhibits abnormal balance movement patterns and has been held for manual compliance review.")
-                    else:
-                        st.success("🎉 **Transaction Clear:** No suspicious patterns detected. Funds can be processed safely.")
-            except Exception as api_err:
-                st.error(f"Could not connect to FastAPI server at `{api_url}`: {api_err}")
+        if is_fraud:
+            st.error("⚠️ **Action Required:** This transaction exhibits abnormal balance movement patterns and has been held for manual compliance review.")
+        else:
+            st.success("🎉 **Transaction Clear:** No suspicious patterns detected. Funds can be processed safely.")
+except Exception as api_err:
+    st.error(f"Could not connect to FastAPI server at `{api_url}`: {api_err}")
