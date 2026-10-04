@@ -79,44 +79,46 @@ def load_transaction_data():
         return df
     except Exception:
         return pd.read_csv("paysim_sample.csv")
-        
-    with dash_tab:
-        if not df.empty:
-            st.sidebar.header("Filter Options")
-            selected_type = st.sidebar.selectbox("Select Transaction Type", ["ALL"] + list(df['type'].unique()))
 
-            filtered_df = df if selected_type == "ALL" else df[df['type'] == selected_type]
+# Call function to fetch data
+df = load_transaction_data()
+with dash_tab:
+    if not df.empty:
+        st.sidebar.header("Filter Options")
+        selected_type = st.sidebar.selectbox("Select Transaction Type", ["ALL"] + list(df['type'].unique()))
 
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Total Transactions", len(filtered_df))
-            col2.metric("Total Volume ($)", f"${filtered_df['amount'].sum():,.2f}")
-            col3.metric("Flagged Fraud Cases", int(filtered_df['isFraud'].sum()))
+        filtered_df = df if selected_type == "ALL" else df[df['type'] == selected_type]
 
-            st.subheader("Transaction Records")
-            st.dataframe(filtered_df, use_container_width=True)
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Transactions", len(filtered_df))
+        col2.metric("Total Volume ($)", f"${filtered_df['amount'].sum():,.2f}")
+        col3.metric("Flagged Fraud Cases", int(filtered_df['isFraud'].sum()))
 
-    with predict_tab:
-        st.subheader("Score Transaction via FastAPI REST Service")
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            step = st.number_input("Step (Hour)", min_value=1, value=1)
-            amount = st.number_input("Transaction Amount ($)", min_value=0.0, value=999999.0)
-            oldbalanceOrg = st.number_input("Sender Initial Balance ($)", min_value=0.0, value=1000000.0)
-        with c2:
-            newbalanceOrig = st.number_input("Sender New Balance ($)", min_value=0.0, value=1.0)
-            oldbalanceDest = st.number_input("Receiver Initial Balance ($)", min_value=0.0, value=0.0)
-            newbalanceDest = st.number_input("Receiver New Balance ($)", min_value=0.0, value=999999.0)
+        st.subheader("Transaction Records")
+        st.dataframe(filtered_df, use_container_width=True)
 
-        if st.button("Send API Request"):
-            payload = {
-                "step": int(step),
-                "amount": float(amount),
-                "oldbalanceOrg": float(oldbalanceOrg),
-                "newbalanceOrig": float(newbalanceOrig),
-                "oldbalanceDest": float(oldbalanceDest),
-                "newbalanceDest": float(newbalanceDest)
-            }
+with predict_tab:
+    st.subheader("Score Transaction via FastAPI REST Service")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        step = st.number_input("Step (Hour)", min_value=1, value=1)
+        amount = st.number_input("Transaction Amount ($)", min_value=0.0, value=999999.0)
+        oldbalanceOrg = st.number_input("Sender Initial Balance ($)", min_value=0.0, value=1000000.0)
+    with c2:
+        newbalanceOrig = st.number_input("Sender New Balance ($)", min_value=0.0, value=1.0)
+        oldbalanceDest = st.number_input("Receiver Initial Balance ($)", min_value=0.0, value=0.0)
+        newbalanceDest = st.number_input("Receiver New Balance ($)", min_value=0.0, value=999999.0)
+
+    if st.button("Send API Request"):
+        payload = {
+            "step": int(step),
+            "amount": float(amount),
+            "oldbalanceOrg": float(oldbalanceOrg),
+            "newbalanceOrig": float(newbalanceOrig),
+            "oldbalanceDest": float(oldbalanceDest),
+            "newbalanceDest": float(newbalanceDest)
+        }
             
             api_url = "http://localhost:8000/predict_fraud"
             
