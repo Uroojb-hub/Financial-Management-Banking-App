@@ -2,14 +2,15 @@ import os
 import bcrypt
 from sqlalchemy import create_engine, text
 
-# 1. Dynamic Database Selection
-# Uses SQLite on Streamlit Cloud, fallback to local MySQL on your machine
-IS_CLOUD = os.getenv("STREAMLIT_SERVER_PORT") is not None or "STREAMLIT_SHARING" in os.environ
-
-if IS_CLOUD:
+# Force SQLite on cloud platforms if local MySQL fails to connect
+try:
+    engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim", connect_args={"connect_timeout": 2})
+    # Test connection
+    with engine.connect() as conn:
+        pass
+except Exception:
+    # If local MySQL is unreachable (like on Streamlit Cloud), use SQLite
     engine = create_engine("sqlite:///users.db")
-else:
-    engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
 
 # 2. Auto-Create Table Setup
 # Generates the users table automatically depending on the active database engine
