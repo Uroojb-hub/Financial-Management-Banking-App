@@ -120,7 +120,7 @@ with predict_tab:
             "newbalanceDest": float(newbalanceDest)
         }
             
-            api_url = "http://localhost:8000/predict_fraud"
+api_url = "http://localhost:8000/predict_fraud"
             
             try:
                 response = requests.post(api_url, json=payload)
