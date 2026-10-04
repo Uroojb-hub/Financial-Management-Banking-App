@@ -70,17 +70,17 @@ else:
 
     engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
 
-    @st.cache_data
-    def load_data():
-        query = "SELECT step, type, amount, oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest, isFraud FROM paysim_raw"
-        return pd.read_sql(query, con=engine)
-
+   @st.cache_data
+def load_transaction_data():
+    # 1. Try loading from local MySQL if available
     try:
-        df = load_data()
-    except Exception as e:
-        st.error(f"Failed to load data from MySQL: {e}")
-        df = pd.DataFrame()
-
+        engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim", connect_args={"connect_timeout": 2})
+        df = pd.read_sql("SELECT * FROM transactions LIMIT 5000", engine)
+        return df
+    except Exception:
+        # 2. Fallback to sample CSV for Streamlit Cloud deployment
+        return pd.read_csv("paysim_sample.csv")
+        
     with dash_tab:
         if not df.empty:
             st.sidebar.header("Filter Options")
