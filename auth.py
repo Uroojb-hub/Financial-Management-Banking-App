@@ -2,7 +2,11 @@ import bcrypt
 from sqlalchemy import create_engine, text
 
 # Database connection setup
-engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
+import os
+
+# If running on Streamlit Cloud, use SQLite; otherwise use local setup
+DB_URL = os.getenv("DATABASE_URL", "sqlite:///users.db")
+engine = create_engine(DB_URL)
 
 # Password Hashing Function
 def hash_password(password: str) -> str:
