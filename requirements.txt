@@ -1,0 +1,8 @@
+streamlit
+requests
+pandas
+scikit-learn
+fastapi
+uvicorn
+mysql-connector-python
+pydantic
