@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 from sqlalchemy import create_engine
+import plotly.express as px
 
 st.set_page_config(page_title="PaySim Banking App", layout="wide")
 
@@ -13,17 +14,7 @@ if 'username' not in st.session_state:
 
 st.title("💳 PaySim - Financial Management & Banking")
 
-# Cache function defined at the top level
-@st.cache_data
-def load_transaction_data():
-    try:
-        engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim", connect_args={"connect_timeout": 2})
-        df = pd.read_sql("SELECT * FROM transactions LIMIT 5000", engine)
-        return df
-    except Exception:
-        return pd.read_csv("paysim_sample.csv")
-
-# Import auth safely inside a try-except block
+# Import auth safely inside a try-except block so UI never breaks
 try:
     import auth
     auth_loaded = True
@@ -78,8 +69,18 @@ else:
 
     dash_tab, predict_tab = st.tabs(["📊 Transaction Dashboard", "🤖 Fraud Detection via REST API"])
 
-    # Load data only after login
-    df = load_transaction_data()
+    engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
+
+    @st.cache_data
+    def load_data():
+        query = "SELECT step, type, amount, oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest, isFraud FROM paysim_raw"
+        return pd.read_sql(query, con=engine)
+
+    try:
+        df = load_data()
+    except Exception as e:
+        st.error(f"Failed to load data from MySQL: {e}")
+        df = pd.DataFrame()
 
     with dash_tab:
         if not df.empty:
@@ -88,13 +89,23 @@ else:
 
             filtered_df = df if selected_type == "ALL" else df[df['type'] == selected_type]
 
+            # Matric cards
             col1, col2, col3 = st.columns(3)
             col1.metric("Total Transactions", len(filtered_df))
             col2.metric("Total Volume ($)", f"${filtered_df['amount'].sum():,.2f}")
             col3.metric("Flagged Fraud Cases", int(filtered_df['isFraud'].sum()))
+            st.divider()
 
-            st.subheader("Transaction Records")
-            st.dataframe(filtered_df, use_container_width=True)
+            # Interactive Charts
+            col_left, col_right = st.columns(2)
+            with col_left:
+                fig_hist = px.histogram(filtered_df, x="amount", color="isFraud", title="Transaction Amount Distribution by Fraud", log_y=True)
+                st.plotly_chart(fig_hist, use_container_width=True)
+            with col_right:
+                fig_scatter = px.scatter(filtered_df, x="oldbalanceOrg", y="amount", color="isFraud", title="Initial Balance vs Amount", hover_data=['type'])
+                st.plotly_chart(fig_scatter, use_container_width=True)
+                st.subheader("Transaction Records")
+                st.dataframe(filtered_df, use_container_width=True)
 
     with predict_tab:
         st.subheader("Score Transaction via FastAPI REST Service")
@@ -119,49 +130,39 @@ else:
                 "newbalanceDest": float(newbalanceDest)
             }
             
-            res_data = None
-
-            # Try calling local FastAPI backend first
+            api_url = "http://localhost:8000/predict_fraud"
+            
             try:
-                response = requests.post("http://localhost:8000/predict_fraud", json=payload, timeout=2)
+                response = requests.post(api_url, json=payload)
                 if response.status_code == 200:
-                    res_data = response.json()
-                else:
-                    st.warning(f"FastAPI returned status code: {response.status_code}")
-            except Exception:
-                # Fallback API response object for Streamlit Cloud
-                is_fraud = 1 if (amount > 200000 and newbalanceOrig == 0) else 0
-                prob = 0.9854 if is_fraud == 1 else 0.0123
-                
-                res_data = {
-                    "prediction": is_fraud,
-                    "fraud_probability": prob,
-                    "status": "success",
-                    "message": "Fraud check completed successfully"
-                }
+                    result = response.json()
+                    is_fraud = result.get("prediction", 0) == 1
+                    prob = result.get("fraud_probability", 0.0) * 100
+                    risk = result.get("risk_level", "LOW")
+                    driver = result.get("top_risk_driver", "N/A")
 
-            # Display metric cards & prediction UI
-            if res_data:
-                st.divider()
-                
-                # Prediction verdict banner
-                is_fraud_val = res_data.get("prediction", 0)
-                if is_fraud_val == 1:
-                    st.error("🚨 **High Risk / Fraudulent Transaction Detected!**")
-                else:
-                    st.success("✅ **Low Risk / Legitimate Transaction Verified.**")
+                   # NEW USER-FRIENDLY UI
+                    st.divider()
+                    st.subheader("📋 Transaction Risk Analysis Summary")
 
-                # Metric Cards
-                m1, m2, m3, m4 = st.columns(4)
-                
-                status_label = "HIGH RISK" if is_fraud_val == 1 else "LEGITIMATE"
-                prob_percent = f"{res_data.get('fraud_probability', 0) * 100:.2f}%"
-                
-                m1.metric(label="Prediction", value=is_fraud_val)
-                m2.metric(label="Risk Status", value=status_label)
-                m3.metric(label="Fraud Probability", value=prob_percent)
-                m4.metric(label="API Status", value=str(res_data.get("status", "N/A")).upper())
+                    m1, m2, m3 = st.columns(3)
 
-                # Raw JSON inspector
-                with st.expander("🔍 View Raw JSON Response"):
-                    st.json(res_data)
+                    with m1:
+                        st.metric(label="Decision", value="🚨 FLAG FRAUD" if is_fraud else "✅ APPROVED")
+
+                    with m2:
+                        st.metric(label="Risk Rating", value=f"{risk}")
+
+                    with m3:
+                        st.metric(label="Calculated Risk Probability", value=f"{prob:.1f}%")
+
+                    # Visual Risk Progress Bar
+                    st.write("**Risk Probability Meter:**")
+                    st.progress(float(result["fraud_probability"]))
+
+                    if is_fraud:
+                        st.error("⚠️ **Action Required:** This transaction exhibits abnormal balance movement patterns and has been held for manual compliance review.")
+                    else:
+                        st.success("🎉 **Transaction Clear:** No suspicious patterns detected. Funds can be processed safely.")
+            except Exception as api_err:
+                st.error(f"Could not connect to FastAPI server at `{api_url}`: {api_err}")
