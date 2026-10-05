@@ -72,15 +72,18 @@ else:
     engine = create_engine("mysql+pymysql://root:Yonkoluffy$3B@localhost:3306/paysim")
 
     @st.cache_data
+    @st.cache_data
     def load_data():
-        query = "SELECT step, type, amount, oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest, isFraud FROM paysim_raw"
-        return pd.read_sql(query, con=engine)
+        try:
+            engine = create_engine("mysql+pymysql://root:Yonkoluffy%3B@localhost:3306/paysim")
+            query = "SELECT step, type, amount, oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest, isFraud FROM paysim_raw"
+            return pd.read_sql(query, con=engine)
+        except Exception:
+            # Fallback to local CSV file if MySQL server is offline/unreachable
+            st.info("ℹ️ Running in offline mode: Loaded sample dataset.")
+            return pd.read_csv("paysim_sample.csv")
 
-    try:
-        df = load_data()
-    except Exception as e:
-        st.error(f"Failed to load data from MySQL: {e}")
-        df = pd.DataFrame()
+    df = load_data()
 
     with dash_tab:
         if not df.empty:
